@@ -3668,7 +3668,7 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
      * @param device 输入设备
      * @return 优化后的显示名称
      */
-    private String optimizeDeviceName(InputDevice device) {
+    private static String optimizeDeviceName(InputDevice device) {
         String originalName = device.getName();
         if (originalName == null || originalName.isEmpty()) {
             return "Unknown Device";
@@ -3716,7 +3716,7 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
      * @param device 输入设备
      * @return 原始设备名称
      */
-    private String getOriginalDeviceName(InputDevice device) {
+    private static String getOriginalDeviceName(InputDevice device) {
         String name = device.getName();
         return name != null ? name : "Unknown Device";
     }
