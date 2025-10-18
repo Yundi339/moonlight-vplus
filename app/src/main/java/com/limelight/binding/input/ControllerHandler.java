@@ -893,7 +893,7 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
             return true;
         }
 
-        String deviceName = dev.getName();
+        String deviceName = getOriginalDeviceName(dev); // 使用原始设备名称进行类型识别
         if (deviceName.contains("gpio") || // This is the back button on Shield portable consoles
                 deviceName.contains("joy_key") || // These are the gamepad buttons on the Archos Gamepad 2
                 deviceName.contains("keypad") || // These are gamepad buttons on the XPERIA Play
@@ -930,7 +930,7 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
     }
 
     private boolean shouldIgnoreBack(InputDevice dev) {
-        String devName = dev.getName();
+        String devName = getOriginalDeviceName(dev); // 使用原始设备名称进行类型识别
 
         // The Serval has a Select button but the framework doesn't
         // know about that because it uses a non-standard scancode.
@@ -1269,7 +1269,7 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
             // no good way to detect this, we'll use the presence of GAS/BRAKE axes
             // that were added in the latest firmware. If those are present, the only
             // required fixup is ignoring the select button.
-            else if (devName.equals("Xbox Wireless Controller")) {
+            else if (getOriginalDeviceName(dev).equals("Xbox Wireless Controller")) {
                 if (gasRange == null) {
                     context.isNonStandardXboxBtController = true;
 
@@ -3664,6 +3664,7 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
 
     /**
      * 优化设备名称显示，解决相同名称设备的识别问题
+     * 注意：此方法只用于显示目的，不影响设备类型识别逻辑
      * @param device 输入设备
      * @return 优化后的显示名称
      */
@@ -3708,5 +3709,15 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
         }
 
         return truncatedName;
+    }
+
+    /**
+     * 获取原始设备名称，用于设备类型识别
+     * @param device 输入设备
+     * @return 原始设备名称
+     */
+    private String getOriginalDeviceName(InputDevice device) {
+        String name = device.getName();
+        return name != null ? name : "Unknown Device";
     }
 }
