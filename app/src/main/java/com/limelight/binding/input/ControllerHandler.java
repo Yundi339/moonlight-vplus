@@ -512,7 +512,8 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
     public void onInputDeviceRemoved(int deviceId) {
         InputDeviceContext context = inputDeviceContexts.get(deviceId);
         if (context != null) {
-            LimeLog.info("Removed controller: "+context.name+" (ID: "+deviceId+")");
+            // 格式化设备移除日志
+            LimeLog.info(String.format("GAMEPAD_REMOVED【%s】ID:%d", context.name, deviceId));
             releaseControllerNumber(context);
             context.destroy();
             inputDeviceContexts.remove(deviceId);
@@ -534,7 +535,8 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
             return;
         }
 
-        LimeLog.info("Device changed: "+existingContext.name+" (ID: "+deviceId+")");
+        // 格式化设备变化日志
+        LimeLog.info(String.format("GAMEPAD_CHANGED【%s】ID:%d", existingContext.name, deviceId));
 
         // Migrate the existing context into this new one by moving any stateful elements
         InputDeviceContext newContext = createInputDeviceContextForDevice(device);
@@ -994,6 +996,15 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
         
         // 优化设备名称显示，截断过长的名称并添加唯一标识符
         String displayName = optimizeDeviceName(dev);
+        
+        // 单行设备信息日志，便于过滤，格式化输出
+        String vidHex = String.format("0x%04X", dev.getVendorId());
+        String pidHex = String.format("0x%04X", dev.getProductId());
+        String shortDesc = dev.getDescriptor() != null && dev.getDescriptor().length() > 4 ? 
+                           dev.getDescriptor().substring(Math.max(0, dev.getDescriptor().length() - 8)) : 
+                           (dev.getDescriptor() != null ? dev.getDescriptor() : "null");
+        LimeLog.info(String.format("GAMEPAD【%s】ID:%d VID:%s PID:%s DESC:%s", 
+                     devName, dev.getId(), vidHex, pidHex, shortDesc));
 
         LimeLog.info("Creating controller context for device: "+displayName);
         LimeLog.info("Original name: "+devName);
