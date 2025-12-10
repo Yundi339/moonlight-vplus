@@ -19,7 +19,7 @@ android {
         minSdk 22
         targetSdk 35
 
-        versionName "12.4.3"
+        versionName "12.4.4.1"
         versionCode = 348
 
         // Generate native debug symbols to allow Google Play to symbolicate our native crashes
@@ -107,7 +107,7 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix ".debug"
+            applicationIdSuffix ".vplus_debug"
             resValue "string", "app_label", "月光-威力加强版"
             resValue "string", "app_label_root", "月光-威力加强版"
 

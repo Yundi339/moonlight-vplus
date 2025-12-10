@@ -16,7 +16,7 @@
         android:layout_height="match_parent"
         android:background="#B3333333" />
     
-    <HorizontalScrollView
+    <ScrollView
         android:id="@+id/settings_nav_scroll"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -29,16 +29,18 @@
         android:paddingRight="0dp"
         android:fitsSystemWindows="false">
 
-        <LinearLayout
+        <GridLayout
             android:id="@+id/settings_nav_container"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:layout_marginLeft="12dp"
             android:layout_marginRight="12dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical" />
-    </HorizontalScrollView>
+            android:columnCount="3"
+            android:rowCount="0"
+            android:alignmentMode="alignMargins"
+            android:useDefaultMargins="false" />
+    </ScrollView>
 
     <FrameLayout
         android:id="@+id/preference_container"
