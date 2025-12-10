@@ -411,9 +411,19 @@ public class StreamSettings extends Activity {
         @Override
         public void onActivityCreated(Bundle savedInstanceState) {
             super.onActivityCreated(savedInstanceState);
+            try {
+                initNavigationButtons();
+            } catch (Exception e) {
+                LimeLog.warning("Failed to initialize navigation buttons: " + e.getMessage());
+            }
+        }
 
+        /**
+         * 初始化导航按钮
+         */
+        private void initNavigationButtons() {
             Activity activity = getActivity();
-            if (activity == null) {
+            if (activity == null || activity.isFinishing()) {
                 return;
             }
 
@@ -426,29 +436,19 @@ public class StreamSettings extends Activity {
             navContainer.removeAllViews();
 
             // 创建展开按钮
-            expandButton = new TextView(activity);
-            expandButton.setText(">"); // 收缩状态显示右箭头
-            expandButton.setTextColor(Color.WHITE);
-            expandButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-            expandButton.setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6));
-            expandButton.setGravity(android.view.Gravity.CENTER);
+            expandButton = createNavButton(activity, ">", 18);
+            if (expandButton == null) {
+                return;
+            }
 
-            GradientDrawable expandBg = new GradientDrawable();
-            expandBg.setColor(Color.parseColor("#33FFFFFF"));
-            expandBg.setCornerRadius(dpToPx(16));
-            expandButton.setBackground(expandBg);
-
-            GridLayout.LayoutParams expandLp = new GridLayout.LayoutParams();
-            expandLp.width = GridLayout.LayoutParams.WRAP_CONTENT;
-            expandLp.height = GridLayout.LayoutParams.WRAP_CONTENT;
-            expandLp.setMargins(0, 0, dpToPx(12), dpToPx(8));
+            GridLayout.LayoutParams expandLp = createGridLayoutParams();
             expandLp.columnSpec = GridLayout.spec(0, 1);
             expandLp.rowSpec = GridLayout.spec(0, 1);
             expandButton.setLayoutParams(expandLp);
 
             expandButton.setOnClickListener(v -> {
                 isNavExpanded = !isNavExpanded;
-                updateNavLayout();
+                updateNavLayoutSafe();
             });
 
             navContainer.addView(expandButton);
@@ -461,63 +461,118 @@ public class StreamSettings extends Activity {
             // 构建分类列表并生成导航按钮
             for (int i = 0; i < screen.getPreferenceCount(); i++) {
                 Preference pref = screen.getPreference(i);
-                if (pref instanceof PreferenceCategory) {
-                    PreferenceCategory category = (PreferenceCategory) pref;
-                    if (category.getTitle() == null) {
-                        continue;
-                    }
-
-                    final TextView tab = new TextView(activity);
-                    tab.setText(category.getTitle());
-                    tab.setTextColor(Color.WHITE);
-                    tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-                    tab.setSingleLine(true);
-                    tab.setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6));
-
-                    GradientDrawable bg = new GradientDrawable();
-                    bg.setColor(Color.parseColor("#33FFFFFF"));
-                    bg.setCornerRadius(dpToPx(16));
-                    tab.setBackground(bg);
-
-                    GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
-                    lp.width = GridLayout.LayoutParams.WRAP_CONTENT;
-                    lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
-                    lp.setMargins(0, 0, dpToPx(12), dpToPx(8));
-                    // 列和行位置会在updateNavLayout中动态设置
-                    tab.setLayoutParams(lp);
-
-                    tab.setOnClickListener(v -> {
-                        int position = findAdapterPositionForPreference(category);
-                        if (position >= 0) {
-							ListView listView = null;
-							View fragmentView = getView();
-							if (fragmentView != null) {
-								listView = fragmentView.findViewById(android.R.id.list);
-							}
-							else {
-								listView = activity.findViewById(android.R.id.list);
-							}
-							if (listView != null) {
-                                listView.smoothScrollToPositionFromTop(position, dpToPx(8));
-                            }
-                        }
-                    });
-
-                    navContainer.addView(tab);
+                if (!(pref instanceof PreferenceCategory)) {
+                    continue;
                 }
+                
+                PreferenceCategory category = (PreferenceCategory) pref;
+                CharSequence title = category.getTitle();
+                if (title == null || title.length() == 0) {
+                    continue;
+                }
+
+                final TextView tab = createNavButton(activity, title, 14);
+                if (tab == null) {
+                    continue;
+                }
+                tab.setSingleLine(true);
+
+                GridLayout.LayoutParams lp = createGridLayoutParams();
+                tab.setLayoutParams(lp);
+
+                tab.setOnClickListener(v -> scrollToCategory(category));
+
+                navContainer.addView(tab);
             }
             
             // 初始化布局
-            updateNavLayout();
+            updateNavLayoutSafe();
         }
 
+        /**
+         * 创建导航按钮
+         */
+        private TextView createNavButton(Activity activity, CharSequence text, int textSizeSp) {
+            if (activity == null) {
+                return null;
+            }
+            
+            TextView button = new TextView(activity);
+            button.setText(text);
+            button.setTextColor(Color.WHITE);
+            button.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp);
+            button.setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6));
+            button.setGravity(android.view.Gravity.CENTER);
+
+            GradientDrawable bg = new GradientDrawable();
+            bg.setColor(Color.parseColor("#33FFFFFF"));
+            bg.setCornerRadius(dpToPx(16));
+            button.setBackground(bg);
+
+            return button;
+        }
+
+        /**
+         * 创建 GridLayout.LayoutParams
+         */
+        private GridLayout.LayoutParams createGridLayoutParams() {
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+            lp.width = GridLayout.LayoutParams.WRAP_CONTENT;
+            lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
+            lp.setMargins(0, 0, dpToPx(12), dpToPx(8));
+            return lp;
+        }
+
+        /**
+         * 滚动到指定分类
+         */
+        private void scrollToCategory(PreferenceCategory category) {
+            if (category == null) {
+                return;
+            }
+            
+            int position = findAdapterPositionForPreference(category);
+            if (position < 0) {
+                return;
+            }
+            
+            ListView listView = null;
+            View fragmentView = getView();
+            if (fragmentView != null) {
+                listView = fragmentView.findViewById(android.R.id.list);
+            }
+            if (listView == null) {
+                Activity activity = getActivity();
+                if (activity != null) {
+                    listView = activity.findViewById(android.R.id.list);
+                }
+            }
+            if (listView != null) {
+                listView.smoothScrollToPositionFromTop(position, dpToPx(8));
+            }
+        }
+
+        /**
+         * 安全更新导航布局
+         */
+        private void updateNavLayoutSafe() {
+            try {
+                updateNavLayout();
+            } catch (Exception e) {
+                LimeLog.warning("Failed to update navigation layout: " + e.getMessage());
+            }
+        }
+
+        /**
+         * 更新导航布局
+         */
         private void updateNavLayout() {
-            if (navContainer == null) {
+            if (navContainer == null || !(navContainer instanceof GridLayout)) {
                 return;
             }
 
             Activity activity = getActivity();
-            if (activity == null) {
+            if (activity == null || activity.isFinishing()) {
                 return;
             }
 
@@ -526,113 +581,118 @@ public class StreamSettings extends Activity {
                 expandButton.setText(isNavExpanded ? "∨" : ">");
             }
 
-            if (!(navContainer instanceof GridLayout)) {
+            GridLayout gridLayout = (GridLayout) navContainer;
+            int childCount = gridLayout.getChildCount();
+            if (childCount <= 0) {
                 return;
             }
-
-            GridLayout gridLayout = (GridLayout) navContainer;
-            int childCount = navContainer.getChildCount();
-            int navButtonCount = childCount - 1; // 导航按钮数量（排除展开按钮）
+            
+            int navButtonCount = Math.max(0, childCount - 1); // 导航按钮数量（排除展开按钮）
             
             if (isNavExpanded) {
-                // 展开状态：每行3个按钮（包括展开按钮），展开按钮固定在第一列第一行
-                gridLayout.setColumnCount(3);
-                
-                // 更新展开按钮位置（始终在第一列第一行）
-                if (expandButton != null) {
-                    ViewGroup.LayoutParams params = expandButton.getLayoutParams();
-                    GridLayout.LayoutParams expandLp;
-                    if (params instanceof GridLayout.LayoutParams) {
-                        expandLp = (GridLayout.LayoutParams) params;
-                    } else {
-                        expandLp = new GridLayout.LayoutParams();
-                    }
-                    expandLp.columnSpec = GridLayout.spec(0, 1);
-                    expandLp.rowSpec = GridLayout.spec(0, 1);
-                    expandButton.setLayoutParams(expandLp);
-                }
-                
-                // 导航按钮布局：第一行从第2列开始，后续行从第1列开始
-                for (int i = 1; i < childCount; i++) {
-                    View child = navContainer.getChildAt(i);
-                    if (child == null) continue;
-                    
-                    ViewGroup.LayoutParams params = child.getLayoutParams();
-                    GridLayout.LayoutParams lp;
-                    if (params instanceof GridLayout.LayoutParams) {
-                        lp = (GridLayout.LayoutParams) params;
-                    } else {
-                        lp = new GridLayout.LayoutParams();
-                    }
-                    
-                    int buttonIndex = i - 1; // 导航按钮的索引（从0开始）
-                    
-                    int row, col;
-                    if (buttonIndex < 2) {
-                        // 前2个按钮放在第一行（第2、3列）
-                        row = 0;
-                        col = buttonIndex + 1;
-                    } else {
-                        // 后续按钮从第二行开始，每行3个
-                        int remainingButtons = buttonIndex - 2;
-                        row = remainingButtons / 3 + 1;
-                        col = remainingButtons % 3;
-                    }
-                    
-                    // 使用 GridLayout.spec 设置列位置和跨度
-                    lp.columnSpec = GridLayout.spec(col, 1);
-                    lp.rowSpec = GridLayout.spec(row, 1);
-                    lp.width = 0; // 使用weight让列平均分配
-                    lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
-                    child.setLayoutParams(lp);
-                }
+                updateExpandedLayout(gridLayout, childCount);
             } else {
-                // 折叠状态：所有按钮水平排列在同一行
-                gridLayout.setColumnCount(navButtonCount + 1); // +1 是展开按钮
-                
-                // 更新展开按钮位置（第一列第一行）
-                if (expandButton != null) {
-                    ViewGroup.LayoutParams params = expandButton.getLayoutParams();
-                    GridLayout.LayoutParams expandLp;
-                    if (params instanceof GridLayout.LayoutParams) {
-                        expandLp = (GridLayout.LayoutParams) params;
-                    } else {
-                        expandLp = new GridLayout.LayoutParams();
-                    }
-                    expandLp.columnSpec = GridLayout.spec(0, 1);
-                    expandLp.rowSpec = GridLayout.spec(0, 1);
-                    expandButton.setLayoutParams(expandLp);
-                }
-                
-                // 导航按钮水平排列
-                for (int i = 1; i < childCount; i++) {
-                    View child = navContainer.getChildAt(i);
-                    if (child == null) continue;
-                    
-                    ViewGroup.LayoutParams params = child.getLayoutParams();
-                    GridLayout.LayoutParams lp;
-                    if (params instanceof GridLayout.LayoutParams) {
-                        lp = (GridLayout.LayoutParams) params;
-                    } else {
-                        lp = new GridLayout.LayoutParams();
-                    }
-                    
-                    lp.columnSpec = GridLayout.spec(i, 1); // 从第2列开始
-                    lp.rowSpec = GridLayout.spec(0, 1);
-                    lp.width = GridLayout.LayoutParams.WRAP_CONTENT;
-                    lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
-                    child.setLayoutParams(lp);
-                }
+                updateCollapsedLayout(gridLayout, childCount, navButtonCount);
             }
             
             // 强制重新布局
-            navContainer.post(() -> {
-                navContainer.requestLayout();
+            gridLayout.post(() -> {
+                if (activity.isFinishing()) {
+                    return;
+                }
+                gridLayout.requestLayout();
                 ScrollView scrollView = activity.findViewById(R.id.settings_nav_scroll);
                 if (scrollView != null) {
                     scrollView.requestLayout();
                 }
             });
+        }
+
+        /**
+         * 更新展开状态布局
+         */
+        private void updateExpandedLayout(GridLayout gridLayout, int childCount) {
+            gridLayout.setColumnCount(3);
+            
+            // 更新展开按钮位置
+            updateExpandButtonPosition();
+            
+            // 导航按钮布局：第一行从第2列开始，后续行从第1列开始
+            for (int i = 1; i < childCount; i++) {
+                View child = gridLayout.getChildAt(i);
+                if (child == null) continue;
+                
+                GridLayout.LayoutParams lp = getOrCreateGridLayoutParams(child);
+                int buttonIndex = i - 1;
+                
+                int row, col;
+                if (buttonIndex < 2) {
+                    row = 0;
+                    col = buttonIndex + 1;
+                } else {
+                    int remainingButtons = buttonIndex - 2;
+                    row = remainingButtons / 3 + 1;
+                    col = remainingButtons % 3;
+                }
+                
+                lp.columnSpec = GridLayout.spec(col, 1);
+                lp.rowSpec = GridLayout.spec(row, 1);
+                lp.width = 0;
+                lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
+                child.setLayoutParams(lp);
+            }
+        }
+
+        /**
+         * 更新折叠状态布局
+         */
+        private void updateCollapsedLayout(GridLayout gridLayout, int childCount, int navButtonCount) {
+            gridLayout.setColumnCount(Math.max(1, navButtonCount + 1));
+            
+            // 更新展开按钮位置
+            updateExpandButtonPosition();
+            
+            // 导航按钮水平排列
+            for (int i = 1; i < childCount; i++) {
+                View child = gridLayout.getChildAt(i);
+                if (child == null) continue;
+                
+                GridLayout.LayoutParams lp = getOrCreateGridLayoutParams(child);
+                lp.columnSpec = GridLayout.spec(i, 1);
+                lp.rowSpec = GridLayout.spec(0, 1);
+                lp.width = GridLayout.LayoutParams.WRAP_CONTENT;
+                lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
+                child.setLayoutParams(lp);
+            }
+        }
+
+        /**
+         * 更新展开按钮位置
+         */
+        private void updateExpandButtonPosition() {
+            if (expandButton == null) {
+                return;
+            }
+            
+            GridLayout.LayoutParams expandLp = getOrCreateGridLayoutParams(expandButton);
+            expandLp.columnSpec = GridLayout.spec(0, 1);
+            expandLp.rowSpec = GridLayout.spec(0, 1);
+            expandButton.setLayoutParams(expandLp);
+        }
+
+        /**
+         * 获取或创建 GridLayout.LayoutParams
+         */
+        private GridLayout.LayoutParams getOrCreateGridLayoutParams(View view) {
+            if (view == null) {
+                return createGridLayoutParams();
+            }
+            
+            ViewGroup.LayoutParams params = view.getLayoutParams();
+            if (params instanceof GridLayout.LayoutParams) {
+                return (GridLayout.LayoutParams) params;
+            }
+            return createGridLayoutParams();
         }
 
         private int dpToPx(int dp) {
