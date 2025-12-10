@@ -38,6 +38,7 @@ import android.util.TypedValue;
 import android.widget.ListView;
 import android.preference.PreferenceGroup;
 import android.widget.GridLayout;
+import android.widget.ScrollView;
 
 import androidx.annotation.NonNull;
 
@@ -563,10 +564,10 @@ public class StreamSettings extends Activity {
                         col = remainingButtons % 3;
                     }
                     
-                    lp.columnSpec = GridLayout.spec(col, 1);
+                    // 使用 GridLayout.spec 设置列位置、跨度和权重
+                    lp.columnSpec = GridLayout.spec(col, 1, 1.0f);
                     lp.rowSpec = GridLayout.spec(row, 1);
-                    lp.width = 0; // 使用weight
-                    lp.setColumnWeight(1.0f);
+                    lp.width = 0; // 使用weight让列平均分配
                     child.setLayoutParams(lp);
                 }
             } else {
@@ -588,7 +589,6 @@ public class StreamSettings extends Activity {
                     lp.columnSpec = GridLayout.spec(i, 1); // 从第2列开始
                     lp.rowSpec = GridLayout.spec(0, 1);
                     lp.width = GridLayout.LayoutParams.WRAP_CONTENT;
-                    lp.setColumnWeight(0);
                     child.setLayoutParams(lp);
                 }
             }
