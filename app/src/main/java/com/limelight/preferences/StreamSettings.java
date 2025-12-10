@@ -540,7 +540,13 @@ public class StreamSettings extends Activity {
                 
                 // 更新展开按钮位置（始终在第一列第一行）
                 if (expandButton != null) {
-                    GridLayout.LayoutParams expandLp = (GridLayout.LayoutParams) expandButton.getLayoutParams();
+                    ViewGroup.LayoutParams params = expandButton.getLayoutParams();
+                    GridLayout.LayoutParams expandLp;
+                    if (params instanceof GridLayout.LayoutParams) {
+                        expandLp = (GridLayout.LayoutParams) params;
+                    } else {
+                        expandLp = new GridLayout.LayoutParams();
+                    }
                     expandLp.columnSpec = GridLayout.spec(0, 1);
                     expandLp.rowSpec = GridLayout.spec(0, 1);
                     expandButton.setLayoutParams(expandLp);
@@ -549,7 +555,16 @@ public class StreamSettings extends Activity {
                 // 导航按钮布局：第一行从第2列开始，后续行从第1列开始
                 for (int i = 1; i < childCount; i++) {
                     View child = navContainer.getChildAt(i);
-                    GridLayout.LayoutParams lp = (GridLayout.LayoutParams) child.getLayoutParams();
+                    if (child == null) continue;
+                    
+                    ViewGroup.LayoutParams params = child.getLayoutParams();
+                    GridLayout.LayoutParams lp;
+                    if (params instanceof GridLayout.LayoutParams) {
+                        lp = (GridLayout.LayoutParams) params;
+                    } else {
+                        lp = new GridLayout.LayoutParams();
+                    }
+                    
                     int buttonIndex = i - 1; // 导航按钮的索引（从0开始）
                     
                     int row, col;
@@ -564,10 +579,11 @@ public class StreamSettings extends Activity {
                         col = remainingButtons % 3;
                     }
                     
-                    // 使用 GridLayout.spec 设置列位置、跨度和权重
-                    lp.columnSpec = GridLayout.spec(col, 1, 1.0f);
+                    // 使用 GridLayout.spec 设置列位置和跨度
+                    lp.columnSpec = GridLayout.spec(col, 1);
                     lp.rowSpec = GridLayout.spec(row, 1);
                     lp.width = 0; // 使用weight让列平均分配
+                    lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
                     child.setLayoutParams(lp);
                 }
             } else {
@@ -576,7 +592,13 @@ public class StreamSettings extends Activity {
                 
                 // 更新展开按钮位置（第一列第一行）
                 if (expandButton != null) {
-                    GridLayout.LayoutParams expandLp = (GridLayout.LayoutParams) expandButton.getLayoutParams();
+                    ViewGroup.LayoutParams params = expandButton.getLayoutParams();
+                    GridLayout.LayoutParams expandLp;
+                    if (params instanceof GridLayout.LayoutParams) {
+                        expandLp = (GridLayout.LayoutParams) params;
+                    } else {
+                        expandLp = new GridLayout.LayoutParams();
+                    }
                     expandLp.columnSpec = GridLayout.spec(0, 1);
                     expandLp.rowSpec = GridLayout.spec(0, 1);
                     expandButton.setLayoutParams(expandLp);
@@ -585,10 +607,20 @@ public class StreamSettings extends Activity {
                 // 导航按钮水平排列
                 for (int i = 1; i < childCount; i++) {
                     View child = navContainer.getChildAt(i);
-                    GridLayout.LayoutParams lp = (GridLayout.LayoutParams) child.getLayoutParams();
+                    if (child == null) continue;
+                    
+                    ViewGroup.LayoutParams params = child.getLayoutParams();
+                    GridLayout.LayoutParams lp;
+                    if (params instanceof GridLayout.LayoutParams) {
+                        lp = (GridLayout.LayoutParams) params;
+                    } else {
+                        lp = new GridLayout.LayoutParams();
+                    }
+                    
                     lp.columnSpec = GridLayout.spec(i, 1); // 从第2列开始
                     lp.rowSpec = GridLayout.spec(0, 1);
                     lp.width = GridLayout.LayoutParams.WRAP_CONTENT;
+                    lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
                     child.setLayoutParams(lp);
                 }
             }
