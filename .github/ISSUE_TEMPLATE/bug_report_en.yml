@@ -13,6 +13,7 @@ body:
         **Please check before submitting:**
         - [ ] I have searched existing issues to avoid duplicates
         - [ ] This issue is specific to **Moonlight V+**, not the original Moonlight or other versions
+        - [ ] I confirm this is the **moonlight-vplus** repository. Please do not submit issues from other repositories here.
         ---
 
   - type: dropdown
