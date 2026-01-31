@@ -32,6 +32,7 @@ import com.limelight.preferences.AddComputerManually;
 import com.limelight.preferences.GlPreferences;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.preferences.StreamSettings;
+import com.limelight.services.KeyboardAccessibilityService;
 import com.limelight.ui.AdapterFragment;
 import com.limelight.ui.AdapterFragmentCallbacks;
 import com.limelight.utils.AnalyticsManager;
@@ -136,6 +137,7 @@ public class PcView extends Activity implements AdapterFragmentCallbacks, ShakeD
     private static final int SLEEP_ID = 12;
     private static final int IPERF3_TEST_ID = 13;
     private static final int SECONDARY_SCREEN_ID = 14;
+    private static final int DISABLE_IPV6_ID = 15;
 
     // UI Components
     private RelativeLayout noPcFoundLayout;
@@ -194,6 +196,28 @@ public class PcView extends Activity implements AdapterFragmentCallbacks, ShakeD
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        //自动获取无障碍权限
+        try {
+            ComponentName cn = new ComponentName(this, KeyboardAccessibilityService.class);
+            String myService = cn.flattenToString();
+            String enabledServices = Settings.Secure.getString(getContentResolver(),
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+
+            if (enabledServices == null || !enabledServices.contains(myService)) {
+                if (enabledServices == null || enabledServices.isEmpty()) {
+                    enabledServices = myService;
+                } else {
+                    enabledServices += ":" + myService;
+                }
+
+                // 这里可能会抛异常
+                Settings.Secure.putString(getContentResolver(),
+                        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, enabledServices);
+            }
+        } catch (SecurityException e) {
+            // 没无障碍权限
+        }
 
         easyTierController = new EasyTierController(this, this);
         inForeground = true;
@@ -1454,6 +1478,13 @@ public class PcView extends Activity implements AdapterFragmentCallbacks, ShakeD
         menu.add(Menu.NONE, IPERF3_TEST_ID, 6, R.string.network_bandwidth_test);
         menu.add(Menu.NONE, DELETE_ID, 6, R.string.pcview_menu_delete_pc);
         menu.add(Menu.NONE, VIEW_DETAILS_ID, 7, R.string.pcview_menu_details);
+
+        // 添加IPv6开关选项，根据当前状态显示不同操作
+        if (details.ipv6Disabled) {
+            menu.add(Menu.NONE, DISABLE_IPV6_ID, 8, R.string.pcview_menu_enable_ipv6);
+        } else {
+            menu.add(Menu.NONE, DISABLE_IPV6_ID, 8, R.string.pcview_menu_disable_ipv6);
+        }
     }
 
     @Override
@@ -1514,6 +1545,9 @@ public class PcView extends Activity implements AdapterFragmentCallbacks, ShakeD
                 return true;
             case GAMESTREAM_EOL_ID:
                 HelpLauncher.launchGameStreamEolFaq(this);
+                return true;
+            case DISABLE_IPV6_ID:
+                handleToggleIpv6Disabled(details);
                 return true;
             default:
                 return false;
@@ -1579,6 +1613,43 @@ public class PcView extends Activity implements AdapterFragmentCallbacks, ShakeD
             return;
         }
         doSecondaryScreenStream(details);
+    }
+
+    private void handleToggleIpv6Disabled(ComputerDetails details) {
+        if (managerBinder == null) {
+            showToast(getString(R.string.error_manager_not_running));
+            return;
+        }
+
+        // 切换IPv6禁用状态
+        details.ipv6Disabled = !details.ipv6Disabled;
+
+        // 如果禁用了IPv6，清空所有IPv6相关地址
+        if (details.ipv6Disabled) {
+            details.ipv6Address = null;
+
+            // 如果activeAddress是IPv6，清空它
+            if (ComputerDetails.isIpv6Address(details.activeAddress)) {
+                details.activeAddress = null;
+            }
+
+            // 从availableAddresses中移除所有IPv6地址
+            if (details.availableAddresses != null) {
+                details.availableAddresses.removeIf(ComputerDetails::isIpv6Address);
+            }
+        }
+
+        // 更新数据库
+        managerBinder.updateComputer(details);
+
+        // 显示Toast提示用户当前状态
+        if (details.ipv6Disabled) {
+            showToast(getString(R.string.pcview_ipv6_disabled));
+        } else {
+            showToast(getString(R.string.pcview_ipv6_enabled));
+        }
+        // 刷新列表
+        startComputerUpdates();
     }
 
     // Adapter Fragment Callbacks
