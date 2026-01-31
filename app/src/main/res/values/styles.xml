@@ -113,7 +113,11 @@
         <item name="android:windowExitAnimation">@anim/background_fadeout</item>
     </style>
 
+    <style name="DarkAlertDialog" parent="android:Theme.Material.Dialog.Alert">
+    </style>
+
     <style name="PreferenceThemeWithShadow" parent="AppTheme">
+        <item name="android:alertDialogTheme">@style/DarkAlertDialog</item>
         <item name="android:textViewStyle">@style/PreferenceTextWithShadow</item>
         <item name="android:titleTextAppearance">@style/PreferenceTitleWithShadow</item>
         <item name="android:subtitleTextAppearance">@style/PreferenceSummaryWithShadow</item>
